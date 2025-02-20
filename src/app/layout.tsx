@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import "./globals.css";
 import Navbar from "@/components/Navbar";
+import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "ZapPDF - AI PDF Summarizer",
-  description: "Modern AI-powered PDF summarizer that extracts key insights",
+  title: "ZapPDFAI - AI PDF Summarizer",
+  description: "AI-powered PDF summarization tool",
 };
 
 export default function RootLayout({
@@ -17,11 +17,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body
-        className={`${inter.className} bg-gray-900 text-white min-h-screen`}
-      >
+      <body className={`${inter.className} bg-gray-900 text-gray-100`}>
         <Navbar />
-        <main className="pt-20 px-4">{children}</main>
+        <main className="min-h-screen p-4 md:p-8">{children}</main>
       </body>
     </html>
   );
