@@ -5,7 +5,7 @@ import PdfAnalysis from "@/components/PdfAnalysis";
 import { processPdfWithDeepSeek } from "@/lib/pdf-service";
 
 export default function Dashboard() {
-  const [isSubscribed, setIsSubscribed] = useState(false);
+  const [isSubscribed, setIsSubscribed] = useState(true);
   const [summary, setSummary] = useState<string | null>(null);
   const [loadingState, setLoadingState] = useState<
     "idle" | "loading" | "error"
