@@ -1,58 +1,57 @@
-import { cn } from '@/lib/utils'
-import { Upload } from 'lucide-react'
-import React, { forwardRef } from 'react'
 
-interface FileUploadProps extends React.InputHTMLAttributes<HTMLInputElement> {
+import { forwardRef, type InputHTMLAttributes } from 'react'
+import { cn } from '@/lib/utils'
+
+interface FileUploadProps extends InputHTMLAttributes<HTMLInputElement> {
   label?: string
-  helperText?: string
-  accept?: string
-  className?: string
-  labelClassName?: string
-  containerClassName?: string
+  onFilesSelected?: (files: FileList) => void
 }
 
-export const FileUpload = forwardRef<HTMLInputElement, FileUploadProps>(
-  ({ 
-    label = 'Upload file', 
-    helperText,
-    accept, 
-    // className, 
-    labelClassName,
-    containerClassName,
-    onChange,
-    disabled,
-    ...props 
-  }, ref) => {
+const FileUpload = forwardRef<HTMLInputElement, FileUploadProps>(
+  ({ className, label = 'Upload file', accept, onChange, disabled, ...props }, ref) => {
     return (
-      <div className={cn("space-y-2", containerClassName)}>
-        <label 
+      <label className="w-full cursor-pointer">
+        <div
           className={cn(
-            "flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-lg cursor-pointer",
-            "hover:bg-gray-700/10 bg-gray-800/20",
-            disabled ? "opacity-50 cursor-not-allowed" : "border-gray-600 hover:border-gray-500",
-            labelClassName
+            'flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-600 p-6 transition-all',
+            'hover:border-purple-500 hover:bg-gray-800/50',
+            disabled && 'cursor-not-allowed opacity-50',
+            className
           )}
         >
-          <div className="flex flex-col items-center justify-center pt-5 pb-6">
-            <Upload className="w-8 h-8 mb-3 text-gray-400" />
-            <p className="mb-2 text-sm text-gray-400">
-              <span className="font-semibold">{label}</span>
-            </p>
-            {helperText && <p className="text-xs text-gray-500">{helperText}</p>}
-          </div>
-          <input 
-            type="file" 
-            className="hidden" 
-            accept={accept} 
-            onChange={onChange}
-            disabled={disabled}
-            ref={ref}
-            {...props}
-          />
-        </label>
-      </div>
+          <svg
+            className="h-8 w-8 text-gray-400 mb-2"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+            />
+          </svg>
+          
+          <span className="text-gray-400 text-sm font-medium">{label}</span>
+          <span className="text-gray-500 text-xs mt-1">PDF files only</span>
+        </div>
+
+        <input
+          ref={ref}
+          type="file"
+          accept={accept}
+          onChange={onChange}
+          disabled={disabled}
+          className="hidden"
+          {...props}
+        />
+      </label>
     )
   }
 )
 
 FileUpload.displayName = 'FileUpload'
+
+export { FileUpload }
