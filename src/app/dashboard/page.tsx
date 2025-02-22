@@ -6,7 +6,6 @@ import { StripeButton } from "./stripe-button";
 import { UserResponse } from "../../../types";
 import { extractTextFromPDF } from "@/src/lib/pdfUtils";
 
-
 export default function Dashboard() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [summary, setSummary] = useState("");
@@ -15,7 +14,8 @@ export default function Dashboard() {
   const [userData, setUserData] = useState<UserResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const isSubscribed = userData?.subscription?.status === "active";
+  // const isSubscribed = userData?.subscription?.status === "active";
+  const isSubscribed = true; //mock true for now
 
   useEffect(() => {
     const fetchUserData = async () => {
@@ -110,7 +110,7 @@ export default function Dashboard() {
         <div className="max-w-4xl mx-auto space-y-8">
           <>
             <div className="bg-[#1A1A23] p-10 rounded-2xl shadow-2xl border border-[#2A2A35]">
-              <h1 className="text-3xl font-bold text-white mb-8 bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
+              <h1 className="text-3xl font-bold text-white mb-8 bg-gradient-to-r from-emerald-400 to-blue-500 bg-clip-text text-transparent">
                 AI Document Analysis
               </h1>
               <div className="space-y-6">
@@ -121,18 +121,18 @@ export default function Dashboard() {
                     accept=".pdf"
                     className="block w-full text-gray-400 file:mr-4 file:py-3 file:px-6 
                              file:rounded-xl file:border-0 file:text-sm file:font-medium
-                             file:bg-gradient-to-r file:from-purple-500 file:to-pink-500 
+                             file:bg-gradient-to-r file:from-emerald-500 file:to-blue-500 
                              file:text-white hover:file:opacity-90 transition-all
-                             focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50"
+                             focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-opacity-50"
                   />
                 </div>
                 <button
                   onClick={handleAnalyze}
                   disabled={!selectedFile || isLoading}
-                  className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-medium
+                  className="w-full bg-gradient-to-r from-emerald-500 to-blue-500 text-white font-medium
                            py-4 px-8 rounded-xl transition-all duration-300 transform hover:scale-[1.02]
                            disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100
-                           shadow-lg hover:shadow-purple-500/25"
+                           shadow-lg hover:shadow-emerald-500/25"
                 >
                   {isLoading ? "Processing..." : "Analyze Document"}
                 </button>
@@ -141,9 +141,9 @@ export default function Dashboard() {
 
             {isLoading && (
               <div className="text-center">
-                <div className="inline-flex items-center px-6 py-3 rounded-xl bg-[#1A1A23] border border-purple-500/30">
-                  <div className="animate-spin mr-3 h-4 w-4 border-2 border-purple-500 border-t-transparent rounded-full"></div>
-                  <span className="text-purple-400">
+                <div className="inline-flex items-center px-6 py-3 rounded-xl bg-[#1A1A23] border border-emerald-500/30">
+                  <div className="animate-spin mr-3 h-4 w-4 border-2 border-emerald-500 border-t-transparent rounded-full"></div>
+                  <span className="text-emerald-400">
                     Analyzing your document...
                   </span>
                 </div>
@@ -159,7 +159,7 @@ export default function Dashboard() {
             {summary && (
               <div className="bg-[#1A1A23] rounded-2xl p-8 shadow-2xl border border-[#2A2A35] animate-fade-in">
                 <div className="flex items-center mb-8">
-                  <h2 className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
+                  <h2 className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-blue-500 bg-clip-text text-transparent">
                     Document Insights
                   </h2>
                 </div>
@@ -170,7 +170,7 @@ export default function Dashboard() {
 
                 <div className="mt-8 pt-6 border-t border-[#2A2A35] flex items-center justify-between text-sm text-gray-400">
                   <span>Generated at {new Date().toLocaleTimeString()}</span>
-                  <span className="px-3 py-1 rounded-full bg-purple-500/10 text-purple-400 text-xs">
+                  <span className="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs">
                     AI Summary
                   </span>
                 </div>

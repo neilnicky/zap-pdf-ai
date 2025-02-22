@@ -10,8 +10,8 @@ const Navbar = () => {
     <nav className="bg-[#0A0A0F] backdrop-blur-lg border-b border-[#2A2A35]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-20">
-          <Link href="/" className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent hover:opacity-90 transition-opacity">
-            PDFtoolAI
+          <Link href="/" className="text-2xl font-bold bg-gradient-to-r from-emerald-400 to-blue-500 bg-clip-text text-transparent hover:opacity-90 transition-opacity">
+            zapPDFai
           </Link>
           
           <div className="flex items-center space-x-6">
