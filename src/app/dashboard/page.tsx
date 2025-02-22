@@ -4,7 +4,8 @@ import { useState, useEffect, useCallback } from "react";
 import Navbar from "../../components/Navbar";
 import { StripeButton } from "./stripe-button";
 import { UserResponse } from "../../../types";
-import { extractTextFromPDF } from "@/lib/pdfUtils";
+import { extractTextFromPDF } from "@/src/lib/pdfUtils";
+
 
 export default function Dashboard() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);

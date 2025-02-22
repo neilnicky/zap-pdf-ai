@@ -1,9 +1,9 @@
 'use server'
 
 import { auth, currentUser } from "@clerk/nextjs/server"
-import { getStripeSession, stripe } from "@/lib/stripe"
+import { getStripeSession, stripe } from "../../lib/stripe"
 import { redirect } from "next/navigation"
-import prisma from "@/lib/prisma"
+import prisma from "../../lib/prisma"
 
 export async function createSubscription() {
   const { userId } = await auth()

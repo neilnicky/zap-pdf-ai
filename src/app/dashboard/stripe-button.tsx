@@ -1,8 +1,8 @@
 'use client'
 
-import { Button } from '@/components/ui/button'
 import { useFormStatus } from 'react-dom'
 import { createSubscription } from './stripe-checkout-session'
+import { Button } from '@/src/components/ui/button'
 
 export function StripeButton() {
   const { pending } = useFormStatus()

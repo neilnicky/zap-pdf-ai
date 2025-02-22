@@ -1,6 +1,6 @@
+import { handleApiError } from '@/src/lib/errors'
+import { rateLimiter } from '@/src/lib/middlewares/rateLimiter'
 import { NextResponse } from 'next/server'
-import { handleApiError } from '@/lib/errors'
-import { rateLimiter } from '@/lib/middlewares/rateLimiter'
 import { NextRequest } from 'next/server'
 
 
