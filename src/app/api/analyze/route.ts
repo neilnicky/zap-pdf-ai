@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+    
 
     const response = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
