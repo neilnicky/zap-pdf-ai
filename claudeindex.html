@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced URL to PDF Exporter</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            color: white;
+            padding: 32px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
+            opacity: 0.3;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            font-weight: 700;
+            margin-bottom: 10px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+            position: relative;
+            z-index: 1;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 32px;
+            padding: 32px;
+        }
+
+        .panel {
+            background: white;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.06);
+            border: 1px solid #e5e7eb;
+            transition: all 0.3s ease;
+        }
+
+        .panel:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.12);
+        }
+
+        .panel h2 {
+            color: #1f2937;
+            font-size: 1.5em;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #374151;
+            font-size: 0.9em;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            background: #f9fafb;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #3b82f6;
+            background: white;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 16px;
+            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+            box-shadow: 0 4px 16px rgba(107, 114, 128, 0.3);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .qr-preview {
+            text-align: center;
+            padding: 20px;
+            border: 2px dashed #d1d5db;
+            border-radius: 12px;
+            background: #f9fafb;
+            min-height: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .qr-preview.has-qr {
+            border-color: #3b82f6;
+            background: #eff6ff;
+        }
+
+        .qr-preview img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+        }
+
+        .url-history {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .url-item {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            padding: 12px;
+            background: #f9fafb;
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border: 1px solid #e5e7eb;
+        }
+
+        .url-item:hover {
+            background: #f3f4f6;
+        }
+
+        .url-text {
+            flex: 1;
+            font-size: 0.9em;
+            color: #4b5563;
+            word-break: break-all;
+            margin-right: 12px;
+        }
+
+        .url-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 0.8em;
+            border-radius: 6px;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .range-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .range-group input[type="range"] {
+            flex: 1;
+        }
+
+        .range-value {
+            min-width: 40px;
+            text-align: center;
+            font-weight: 600;
+            color: #3b82f6;
+        }
+
+        .status {
+            padding: 12px;
+            border-radius: 8px;
+            margin: 16px 0;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background: #ecfdf5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+
+        .status.error {
+            background: #fef2f2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+
+        .status.info {
+            background: #eff6ff;
+            color: #1e40af;
+            border: 1px solid #bfdbfe;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f3f3f3;
+            border-radius: 50%;
+            border-top: 2px solid #3b82f6;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            margin-top: 24px;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid #bae6fd;
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: 700;
+            color: #0369a1;
+        }
+
+        .stat-label {
+            color: #075985;
+            font-size: 0.9em;
+            margin-top: 4px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+                gap: 20px;
+                padding: 20px;
+            }
+
+            .settings-grid, .grid-2 {
+                grid-template-columns: 1fr;
+            }
+
+            .header h1 {
+                font-size: 2em;
+            }
+
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .icon {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 Advanced PDF Exporter</h1>
+            <p>Transform URLs into high-quality QR codes and comprehensive PDF reports</p>
+        </div>
+
+        <div class="main-content">
+            <div class="panel">
+                <h2>
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"/>
+                    </svg>
+                    URL Generator
+                </h2>
+                
+                <div class="form-group">
+                    <label for="urlInput">Enter URL</label>
+                    <input type="url" id="urlInput" class="form-control" placeholder="https://example.com/document.pdf">
+                </div>
+
+                <div class="form-group">
+                    <label for="exportName">Export Name</label>
+                    <input type="text" id="exportName" class="form-control" placeholder="my-document" value="document">
+                </div>
+
+                <div class="settings-grid">
+                    <div class="form-group">
+                        <label for="qrSize">QR Code Size</label>
+                        <div class="range-group">
+                            <input type="range" id="qrSize" min="200" max="2000" value="800">
+                            <span class="range-value" id="qrSizeValue">800</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="qrMargin">Margin</label>
+                        <div class="range-group">
+                            <input type="range" id="qrMargin" min="0" max="10" value="2">
+                            <span class="range-value" id="qrMarginValue">2</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid-2">
+                    <button id="generateBtn" class="btn">Generate QR Code</button>
+                    <button id="downloadPdfBtn" class="btn btn-success" disabled>Download PDF Report</button>
+                </div>
+
+                <div id="status"></div>
+            </div>
+
+            <div class="panel">
+                <h2>
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                    </svg>
+                    Preview & Management
+                </h2>
+                
+                <div class="qr-preview" id="qrPreview">
+                    <svg width="64" height="64" viewBox="0 0 24 24" fill="#d1d5db">
+                        <path d="M3 11h8V3H3v8zm2-6h4v4H5V5zM13 3v8h8V3h-8zm6 6h-4V5h4v4zM3 21h8v-8H3v8zm2-6h4v4H5v-4z"/>
+                        <path d="M18 16h-2v2h2v-2zM16 18h-2v2h2v-2zM18 18h2v2h-2v-2zM20 16h2v-2h-2v2zM18 14h2v-2h-2v2zM16 14h-2v2h2v-2z"/>
+                    </svg>
+                    <p>QR code will appear here</p>
+                </div>
+
+                <div class="grid-2">
+                    <button id="downloadQrBtn" class="btn btn-secondary" disabled>Download QR</button>
+                    <button id="copyUrlBtn" class="btn btn-secondary" disabled>Copy URL</button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <h2>
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    URL History
+                </h2>
+                
+                <div class="url-history" id="urlHistory">
+                    <p style="text-align: center; color: #6b7280; padding: 40px 20px;">No URLs generated yet</p>
+                </div>
+
+                <button id="clearHistoryBtn" class="btn btn-danger btn-small">Clear History</button>
+            </div>
+
+            <div class="panel">
+                <h2>
+                    <svg class="icon" viewBox="0 0 24 24">
+                        <path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                    Statistics
+                </h2>
+                
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalGenerated">0</div>
+                        <div class="stat-label">QR Codes Generated</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="totalDownloads">0</div>
+                        <div class="stat-label">Downloads</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="avgSize">0</div>
+                        <div class="stat-label">Avg Size (px)</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class AdvancedPDFExporter {
+            constructor() {
+                this.urlHistory = JSON.parse(localStorage.getItem('urlHistory') || '[]');
+                this.stats = JSON.parse(localStorage.getItem('exporterStats') || '{"totalGenerated": 0, "totalDownloads": 0, "sizes": []}');
+                this.currentQRData = null;
+                this.currentURL = '';
+                
+                this.initializeElements();
+                this.bindEvents();
+                this.updateUI();
+            }
+
+            initializeElements() {
+                this.elements = {
+                    urlInput: document.getElementById('urlInput'),
+                    exportName: document.getElementById('exportName'),
+                    qrSize: document.getElementById('qrSize'),
+                    qrMargin: document.getElementById('qrMargin'),
+                    qrSizeValue: document.getElementById('qrSizeValue'),
+                    qrMarginValue: document.getElementById('qrMarginValue'),
+                    generateBtn: document.getElementById('generateBtn'),
+                    downloadPdfBtn: document.getElementById('downloadPdfBtn'),
+                    downloadQrBtn: document.getElementById('downloadQrBtn'),
+                    copyUrlBtn: document.getElementById('copyUrlBtn'),
+                    clearHistoryBtn: document.getElementById('clearHistoryBtn'),
+                    qrPreview: document.getElementById('qrPreview'),
+                    status: document.getElementById('status'),
+                    urlHistory: document.getElementById('urlHistory'),
+                    totalGenerated: document.getElementById('totalGenerated'),
+                    totalDownloads: document.getElementById('totalDownloads'),
+                    avgSize: document.getElementById('avgSize')
+                };
+            }
+
+            bindEvents() {
+                // Range inputs
+                this.elements.qrSize.addEventListener('input', (e) => {
+                    this.elements.qrSizeValue.textContent = e.target.value;
+                });
+
+                this.elements.qrMargin.addEventListener('input', (e) => {
+                    this.elements.qrMarginValue.textContent = e.target.value;
+                });
+
+                // Buttons
+                this.elements.generateBtn.addEventListener('click', () => this.generateQR());
+                this.elements.downloadPdfBtn.addEventListener('click', () => this.downloadPDF());
+                this.elements.downloadQrBtn.addEventListener('click', () => this.downloadQR());
+                this.elements.copyUrlBtn.addEventListener('click', () => this.copyURL());
+                this.elements.clearHistoryBtn.addEventListener('click', () => this.clearHistory());
+
+                // Enter key support
+                this.elements.urlInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') this.generateQR();
+                });
+
+                // URL validation
+                this.elements.urlInput.addEventListener('input', (e) => {
+                    this.validateURL(e.target.value);
+                });
+            }
+
+            validateURL(url) {
+                try {
+                    new URL(url);
+                    this.elements.urlInput.style.borderColor = '#10b981';
+                    return true;
+                } catch {
+                    if (url.length > 0) {
+                        this.elements.urlInput.style.borderColor = '#ef4444';
+                    } else {
+                        this.elements.urlInput.style.borderColor = '#e5e7eb';
+                    }
+                    return false;
+                }
+            }
+
+            showStatus(message, type = 'info') {
+                this.elements.status.innerHTML = `<div class="status ${type}">${message}</div>`;
+                if (type !== 'error') {
+                    setTimeout(() => this.elements.status.innerHTML = '', 3000);
+                }
+            }
+
+            async generateQR() {
+                const url = this.elements.urlInput.value.trim();
+                
+                if (!url) {
+                    this.showStatus('Please enter a URL', 'error');
+                    return;
+                }
+
+                if (!this.validateURL(url)) {
+                    this.showStatus('Please enter a valid URL', 'error');
+                    return;
+                }
+
+                this.elements.generateBtn.innerHTML = '<span class="loading"></span>Generating...';
+                this.elements.generateBtn.disabled = true;
+
+                try {
+                    const size = parseInt(this.elements.qrSize.value);
+                    const margin = parseInt(this.elements.qrMargin.value);
+
+                    // Create QR code using qrcode-generator library
+                    const qr = qrcode(0, 'L');
+                    qr.addData(url);
+                    qr.make();
+                    
+                    // Create canvas and draw QR code
+                    const canvas = document.createElement('canvas');
+                    const moduleCount = qr.getModuleCount();
+                    const cellSize = Math.floor(size / (moduleCount + 2 * margin));
+                    const canvasSize = cellSize * (moduleCount + 2 * margin);
+                    
+                    canvas.width = canvasSize;
+                    canvas.height = canvasSize;
+                    
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Fill background
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(0, 0, canvasSize, canvasSize);
+                    
+                    // Draw QR modules
+                    ctx.fillStyle = '#000000';
+                    for (let row = 0; row < moduleCount; row++) {
+                        for (let col = 0; col < moduleCount; col++) {
+                            if (qr.isDark(row, col)) {
+                                ctx.fillRect(
+                                    (col + margin) * cellSize,
+                                    (row + margin) * cellSize,
+                                    cellSize,
+                                    cellSize
+                                );
+                            }
+                        }
+                    }
+                    
+                    const qrDataURL = canvas.toDataURL('image/png');
+                    this.currentQRData = qrDataURL;
+                    this.currentURL = url;
+
+                    // Update preview
+                    this.elements.qrPreview.innerHTML = `
+                        <img src="${qrDataURL}" alt="QR Code" style="max-width: 200px; border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.1);">
+                        <p style="margin-top: 12px; color: #374151; font-weight: 500;">${canvasSize}x${canvasSize} pixels</p>
+                    `;
+                    this.elements.qrPreview.classList.add('has-qr');
+
+                    // Enable buttons
+                    this.elements.downloadPdfBtn.disabled = false;
+                    this.elements.downloadQrBtn.disabled = false;
+                    this.elements.copyUrlBtn.disabled = false;
+
+                    // Add to history
+                    this.addToHistory(url, canvasSize, margin);
+                    
+                    // Update stats
+                    this.updateStats('generated', canvasSize);
+                    
+                    this.showStatus('QR code generated successfully!', 'success');
+
+                } catch (error) {
+                    console.error('Error generating QR code:', error);
+                    this.showStatus('Failed to generate QR code: ' + error.message, 'error');
+                } finally {
+                    this.elements.generateBtn.innerHTML = 'Generate QR Code';
+                    this.elements.generateBtn.disabled = false;
+                }
+            }
+
+            addToHistory(url, size, margin) {
+                const historyItem = {
+                    id: Date.now(),
+                    url,
+                    size,
+                    margin,
+                    timestamp: new Date().toISOString(),
+                    name: this.elements.exportName.value || 'document'
+                };
+
+                this.urlHistory.unshift(historyItem);
+                if (this.urlHistory.length > 50) {
+                    this.urlHistory = this.urlHistory.slice(0, 50);
+                }
+
+                localStorage.setItem('urlHistory', JSON.stringify(this.urlHistory));
+                this.updateHistoryUI();
+            }
+
+            updateHistoryUI() {
+                if (this.urlHistory.length === 0) {
+                    this.elements.urlHistory.innerHTML = '<p style="text-align: center; color: #6b7280; padding: 40px 20px;">No URLs generated yet</p>';
+                    return;
+                }
+
+                this.elements.urlHistory.innerHTML = this.urlHistory.map(item => `
+                    <div class="url-item">
+                        <div class="url-text">
+                            <strong>${item.name}</strong><br>
+                            <small>${this.truncateURL(item.url, 50)}</small><br>
+                            <small style="color: #9ca3af;">${item.size}×${item.size}px • ${new Date(item.timestamp).toLocaleString()}</small>
+                        </div>
+                        <div class="url-actions">
+                            <button class="btn btn-small btn-secondary" onclick="app.loadFromHistory('${item.id}')">Load</button>
+                            <button class="btn btn-small btn-danger" onclick="app.deleteFromHistory('${item.id}')">×</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            truncateURL(url, maxLength) {
+                return url.length > maxLength ? url.substring(0, maxLength) + '...' : url;
+            }
+
+            loadFromHistory(id) {
+                const item = this.urlHistory.find(h => h.id == id);
+                if (item) {
+                    this.elements.urlInput.value = item.url;
+                    this.elements.exportName.value = item.name;
+                    this.elements.qrSize.value = item.size;
+                    this.elements.qrMargin.value = item.margin;
+                    this.elements.qrSizeValue.textContent = item.size;
+                    this.elements.qrMarginValue.textContent = item.margin;
+                    this.validateURL(item.url);
+                }
+            }
+
+            deleteFromHistory(id) {
+                this.urlHistory = this.urlHistory.filter(h => h.id != id);
+                localStorage.setItem('urlHistory', JSON.stringify(this.urlHistory));
+                this.updateHistoryUI();
+                this.updateStats();
+            }
+
+            clearHistory() {
+                if (confirm('Are you sure you want to clear all history?')) {
+                    this.urlHistory = [];
+                    localStorage.removeItem('urlHistory');
+                    this.updateHistoryUI();
+                    this.showStatus('History cleared', 'success');
+                }
+            }
+
+            downloadQR() {
+                if (!this.currentQRData) return;
+
+                const link = document.createElement('a');
+                link.download = `${this.elements.exportName.value || 'qr-code'}.png`;
+                link.href = this.currentQRData;
+                link.click();
+
+                this.updateStats('downloaded');
+                this.showStatus('QR code downloaded!', 'success');
+            }
+
+            async copyURL() {
+                if (!this.currentURL) return;
+
+                try {
+                    await navigator.clipboard.writeText(this.currentURL);
+                    this.showStatus('URL copied to clipboard!', 'success');
+                } catch (error) {
+                    this.showStatus('Failed to copy URL', 'error');
+                }
+            }
+
+            downloadPDF() {
+                if (!this.currentQRData || !this.currentURL) return;
+
+                try {
+                    const { jsPDF } = window.jspdf;
+                    const pdf = new jsPDF('p', 'mm', 'a4');
+                    const exportName = this.elements.exportName.value || 'document';
+                    const size = parseInt(this.elements.qrSize.value);
+                    
+                    // Title
+                    pdf.setFontSize(24);
+                    pdf.setFont(undefined, 'bold');
+                    pdf.text('URL Export Report', 20, 30);
+                    
+                    // Metadata
+                    pdf.setFontSize(12);
+                    pdf.setFont(undefined, 'normal');
+                    pdf.text(`Export Name: ${exportName}`, 20, 50);
+                    pdf.text(`Generated: ${new Date().toLocaleString()}`, 20, 60);
+                    pdf.text(`QR Code Size: ${size}x${size} pixels`, 20, 70);
+                    
+                    // URL
+                    pdf.setFontSize(10);
+                    pdf.text('URL:', 20, 90);
+                    
+                    // Handle long URLs by wrapping text
+                    const urlLines = pdf.splitTextToSize(this.currentURL, 170);
+                    pdf.text(urlLines, 20, 100);
+                    
+                    // QR Code
+                    const qrY = 100 + (urlLines.length * 5) + 20;
+                    pdf.text('QR Code:', 20, qrY);
+                    
+                    // Add QR code image
+                    const qrSize = Math.min(80, 200 - qrY); // Dynamic size based on space
+                    pdf.addImage(this.currentQRData, 'PNG', 20, qrY + 10, qrSize, qrSize);
+                    
+                    // Instructions
+                    const instructionY = qrY + qrSize + 30;
+                    pdf.setFontSize(10);
+                    pdf.text('Instructions:', 20, instructionY);
+                    pdf.text('• Scan the QR code with any QR code reader', 25, instructionY + 10);
+                    pdf.text('• The code will direct you to the URL above', 25, instructionY + 20);
+                    pdf.text('• This document serves as a backup reference', 25, instructionY + 30);
+                    
+                    // Footer
+                    pdf.setFontSize(8);
+                    pdf.text('Generated by Advanced PDF Exporter', 20, 280);
+                    
+                    pdf.save(`${exportName}-export.pdf`);
+                    
+                    this.updateStats('downloaded');
+                    this.showStatus('PDF report downloaded!', 'success');
+                }
+                catch {
+
+                }
+            }
+        }

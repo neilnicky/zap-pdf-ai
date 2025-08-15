@@ -1,0 +1,1325 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>URL → PDF Exporter · Glass</title>
+    <style>
+      :root {
+        --bg: 16, 18, 27;
+        --fg: 232, 236, 243;
+        --muted: 160, 170, 190;
+        --accent: 99, 102, 241; /* indigo */
+        --ok: 34, 197, 94;
+        --warn: 245, 158, 11;
+        --err: 239, 68, 68;
+        --card: 255, 255, 255, 0.08;
+        --blur: 14px;
+        --radius: 16px;
+        --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      }
+
+      html,
+      body {
+        height: 100%;
+      }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto,
+          Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        color: rgb(var(--fg));
+        background: radial-gradient(
+            1200px 800px at 10% -10%,
+            rgba(79, 70, 229, 0.25),
+            transparent 40%
+          ),
+          radial-gradient(
+            900px 600px at 110% 10%,
+            rgba(236, 72, 153, 0.18),
+            transparent 40%
+          ),
+          rgb(var(--bg));
+        -webkit-font-smoothing: antialiased;
+        text-rendering: optimizeLegibility;
+      }
+      .app {
+        display: grid;
+        grid-template-rows: auto 1fr;
+        min-height: 100%;
+      }
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        backdrop-filter: blur(var(--blur));
+        background: rgba(var(--bg), 0.55);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .row {
+        display: flex;
+        gap: 0.75rem;
+        align-items: center;
+        padding: 0.8rem clamp(0.8rem, 2vw, 1.2rem);
+      }
+      .title {
+        font-weight: 800;
+        letter-spacing: 0.3px;
+        display: flex;
+        align-items: center;
+        gap: 0.6rem;
+      }
+      .badge {
+        font-size: 0.7rem;
+        opacity: 0.8;
+        padding: 0.15rem 0.45rem;
+        border-radius: 999px;
+        background: rgba(var(--accent), 0.18);
+        border: 1px solid rgba(var(--accent), 0.35);
+      }
+      .grow {
+        flex: 1;
+      }
+      .btn {
+        appearance: none;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(var(--card));
+        padding: 0.6rem 0.9rem;
+        border-radius: 12px;
+        color: inherit;
+        cursor: pointer;
+        transition: 0.2s transform, 0.2s background;
+        backdrop-filter: blur(var(--blur));
+        box-shadow: var(--shadow);
+      }
+      .btn[disabled] {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+      .btn:hover {
+        background: rgba(255, 255, 255, 0.12);
+        transform: translateY(-1px);
+      }
+      .btn.primary {
+        background: linear-gradient(
+          135deg,
+          rgba(var(--accent), 0.6),
+          rgba(var(--accent), 0.45)
+        );
+        border-color: rgba(var(--accent), 0.8);
+      }
+      .icon {
+        width: 1.1rem;
+        height: 1.1rem;
+        display: inline-block;
+        vertical-align: -0.2rem;
+      }
+      input[type="text"],
+      select {
+        flex: 1;
+        min-width: 240px;
+        color: inherit;
+        background: rgba(var(--card));
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        padding: 0.7rem 0.9rem;
+        border-radius: 12px;
+        outline: none;
+        backdrop-filter: blur(var(--blur));
+        box-shadow: var(--shadow);
+      }
+      input[type="text"]::placeholder {
+        color: rgba(var(--fg), 0.6);
+      }
+      .pill {
+        padding: 0.35rem 0.6rem;
+        border-radius: 999px;
+        font-size: 0.78rem;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.06);
+      }
+
+      /* Layout */
+      .grid {
+        display: grid;
+        grid-template-columns: 330px 1fr 360px;
+        gap: 1rem;
+        padding: 1rem;
+        align-items: stretch;
+      }
+      @media (max-width: 1100px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* Cards */
+      .card {
+        background: rgba(var(--card));
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: var(--radius);
+        padding: 0.9rem;
+        backdrop-filter: blur(var(--blur));
+        box-shadow: var(--shadow);
+      }
+      .card h3 {
+        margin: 0.2rem 0.2rem 0.6rem;
+        font-size: 1rem;
+        opacity: 0.9;
+      }
+
+      /* URL Queue */
+      #queue {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        min-height: 200px;
+      }
+      .item {
+        display: grid;
+        grid-template-columns: 24px 1fr auto;
+        gap: 0.5rem;
+        align-items: center;
+        padding: 0.5rem;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .item[aria-selected="true"] {
+        outline: 2px solid rgba(var(--accent), 0.9);
+      }
+      .handle {
+        cursor: grab;
+        user-select: none;
+        text-align: center;
+        opacity: 0.7;
+      }
+      .url {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 0.9rem;
+      }
+      .status {
+        font-size: 0.72rem;
+        opacity: 0.8;
+      }
+
+      /* Preview */
+      #previewWrap {
+        display: grid;
+        grid-template-rows: auto 1fr;
+        gap: 0.6rem;
+        min-height: 360px;
+      }
+      #iframe {
+        width: 100%;
+        height: 45vh;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.03);
+      }
+      #qr {
+        width: 160px;
+        height: 160px;
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 12px;
+      }
+
+      /* Stats */
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 0.6rem;
+      }
+      .stat {
+        background: rgba(255, 255, 255, 0.06);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 0.7rem;
+      }
+      .stat .v {
+        font-size: 1.2rem;
+        font-weight: 700;
+      }
+      canvas {
+        width: 100%;
+        height: 120px;
+        display: block;
+      }
+
+      /* Progress */
+      .progress {
+        height: 10px;
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.08);
+        overflow: hidden;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+      }
+      .bar {
+        height: 100%;
+        width: 0%;
+        background: linear-gradient(
+          90deg,
+          rgba(var(--accent), 0.9),
+          rgba(34, 197, 94, 0.9)
+        );
+        transition: width 0.2s;
+      }
+
+      /* Toast */
+      #toast {
+        position: fixed;
+        right: 1rem;
+        bottom: 1rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        z-index: 999;
+      }
+      .toast {
+        padding: 0.6rem 0.8rem;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(0, 0, 0, 0.55);
+        backdrop-filter: blur(10px);
+      }
+
+      /* Settings modal */
+      dialog {
+        border: none;
+        border-radius: 16px;
+        padding: 0;
+        background: rgba(20, 22, 33, 0.85);
+        color: inherit;
+        box-shadow: var(--shadow);
+        width: min(800px, 96vw);
+      }
+      dialog::backdrop {
+        background: rgba(0, 0, 0, 0.55);
+        backdrop-filter: blur(4px);
+      }
+      .modal-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      .modal-body {
+        padding: 1rem;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem;
+      }
+      .modal-body label {
+        font-size: 0.85rem;
+        opacity: 0.9;
+      }
+      .field {
+        display: flex;
+        gap: 0.5rem;
+        align-items: center;
+      }
+      .modal-foot {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1rem;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+      }
+      @media (max-width: 700px) {
+        .modal-body {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* Print report (HTML → PDF via native print) */
+      @media print {
+        body {
+          background: white;
+        }
+        header,
+        .no-print {
+          display: none !important;
+        }
+        .print-report {
+          display: block;
+        }
+      }
+      .print-report {
+        display: none;
+      }
+      .report-page {
+        page-break-after: always;
+        padding: 20mm;
+      }
+      .report-card {
+        border: 1px solid #ddd;
+        border-radius: 12px;
+        padding: 12px;
+      }
+      .toc li {
+        margin: 0.2rem 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app" aria-live="polite">
+      <header>
+        <div class="row" role="navigation" aria-label="Top bar">
+          <div class="title" aria-label="App title">
+            <svg
+              class="icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                stroke-width="2"
+                d="M4 4h16v16H4zM8 4v16M4 8h16"
+              />
+            </svg>
+            <span>URL → PDF Exporter</span>
+            <span class="badge">Glass UI</span>
+          </div>
+          <input
+            id="urlInput"
+            type="text"
+            placeholder="Paste a URL and press Enter…"
+            aria-label="URL input"
+          />
+          <button class="btn" id="btnAdd" title="Add URL (Enter)">Add</button>
+          <div class="grow"></div>
+          <span id="validity" class="pill" aria-live="polite">URL: —</span>
+          <button class="btn" id="btnSettings" title="Open settings (S)">
+            Settings
+          </button>
+          <button class="btn" id="btnImport" title="Import settings (I)">
+            Import
+          </button>
+          <button class="btn" id="btnExport" title="Export settings (E)">
+            Export
+          </button>
+          <button
+            class="btn primary"
+            id="btnExportPDF"
+            title="Export PDF (Ctrl/Cmd+Enter)"
+          >
+            Export PDF
+          </button>
+        </div>
+      </header>
+
+      <main class="grid" id="main">
+        <!-- Queue -->
+        <section class="card" aria-label="Queue" aria-describedby="queueHelp">
+          <h3>
+            Queue <span id="queueCount" class="pill" aria-live="polite">0</span>
+          </h3>
+          <p id="queueHelp" style="opacity: 0.8; font-size: 0.85rem">
+            Drag & drop URLs here or reorder with the left handle. Select an
+            item to preview.
+          </p>
+          <div
+            id="dropZone"
+            class="card"
+            style="min-height: 48px; display: none; place-items: center"
+          >
+            Drop URLs here…
+          </div>
+          <div
+            id="queue"
+            role="listbox"
+            tabindex="0"
+            aria-multiselectable="false"
+          ></div>
+          <div class="row">
+            <button class="btn" id="btnClear">Clear</button>
+            <button class="btn" id="btnDelete">Delete selected (Del)</button>
+          </div>
+        </section>
+
+        <!-- Preview + QR -->
+        <section class="card" id="previewWrap">
+          <div class="row" style="justify-content: space-between">
+            <h3>Preview</h3>
+            <div class="field">
+              <label for="livePreview" style="opacity: 0.8">Live preview</label>
+              <input type="checkbox" id="livePreview" checked />
+            </div>
+          </div>
+          <iframe
+            id="iframe"
+            title="Live preview"
+            sandbox="allow-scripts allow-same-origin allow-forms"
+            src="about:blank"
+          ></iframe>
+          <div class="row">
+            <div>
+              <div class="pill">Current URL</div>
+              <div
+                id="currentURL"
+                style="
+                  max-width: 60ch;
+                  overflow: hidden;
+                  text-overflow: ellipsis;
+                "
+              ></div>
+            </div>
+            <div class="grow"></div>
+            <div>
+              <div class="pill">QR Preview</div>
+              <canvas id="qr" aria-label="QR code preview"></canvas>
+            </div>
+          </div>
+        </section>
+
+        <!-- Stats -->
+        <aside class="card" aria-label="Stats dashboard">
+          <h3>Stats</h3>
+          <div class="stats">
+            <div class="stat">
+              <div class="k">Total</div>
+              <div class="v" id="sTotal">0</div>
+            </div>
+            <div class="stat">
+              <div class="k">Exported</div>
+              <div class="v" id="sDone">0</div>
+            </div>
+            <div class="stat">
+              <div class="k">Failed</div>
+              <div class="v" id="sFail">0</div>
+            </div>
+            <div class="stat">
+              <div class="k">Avg ms</div>
+              <div class="v" id="sAvg">0</div>
+            </div>
+          </div>
+          <div style="margin-top: 0.7rem">
+            <div class="pill">Progress</div>
+            <div
+              class="progress"
+              aria-label="Export progress"
+              aria-live="polite"
+            >
+              <div id="bar" class="bar"></div>
+            </div>
+          </div>
+          <div style="margin-top: 0.7rem">
+            <div class="pill">Timeline</div>
+            <canvas id="chart" aria-label="exports chart"></canvas>
+          </div>
+        </aside>
+      </main>
+
+      <!-- Hidden printable report -->
+      <section
+        id="printReport"
+        class="print-report"
+        aria-hidden="true"
+      ></section>
+
+      <div id="toast" role="status" aria-live="polite"></div>
+
+      <!-- Settings Modal -->
+      <dialog id="settings">
+        <form method="dialog">
+          <div class="modal-head">
+            <strong>Settings</strong>
+            <button class="btn" value="close" aria-label="Close settings">
+              ✕
+            </button>
+          </div>
+          <div class="modal-body">
+            <div>
+              <label>Page size</label>
+              <select id="setPageSize">
+                <option value="A4">A4</option>
+                <option value="Letter">Letter</option>
+                <option value="A3">A3</option>
+              </select>
+            </div>
+            <div>
+              <label>Orientation</label>
+              <select id="setOrientation">
+                <option value="portrait">Portrait</option>
+                <option value="landscape">Landscape</option>
+              </select>
+            </div>
+            <div>
+              <label>Margins (mm)</label>
+              <input id="setMargin" type="number" min="5" max="50" value="15" />
+            </div>
+            <div>
+              <label>Include cover page</label>
+              <select id="setCover">
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+            </div>
+            <div>
+              <label>Add QR to each page</label>
+              <select id="setQRPerPage">
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+            </div>
+            <div>
+              <label>Delay per URL (ms)</label>
+              <input
+                id="setDelay"
+                type="number"
+                min="0"
+                step="100"
+                value="300"
+              />
+            </div>
+            <div>
+              <label>Filename template</label>
+              <input id="setFile" type="text" value="report-{date}.pdf" />
+            </div>
+            <div>
+              <label>Validate by DNS ping</label>
+              <select id="setDnsPing">
+                <option value="no">No (fast)</option>
+                <option value="yes">Yes (more accurate)</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-foot">
+            <div style="opacity: 0.8">Settings auto‑save locally</div>
+            <div>
+              <button class="btn" value="reset" id="btnReset">Reset</button>
+              <button class="btn primary" value="ok">Done</button>
+            </div>
+          </div>
+        </form>
+      </dialog>
+
+      <input type="file" id="fileImport" accept="application/json" hidden />
+    </div>
+
+    <script>
+      // ===== Utilities =====
+      const $ = (s, el = document) => el.querySelector(s);
+      const $$ = (s, el = document) => Array.from(el.querySelectorAll(s));
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+      const nowISO = () => new Date().toISOString().replace(/[:.]/g, "-");
+
+      const store = {
+        get(k, def) {
+          try {
+            return JSON.parse(localStorage.getItem(k)) ?? def;
+          } catch {
+            return def;
+          }
+        },
+        set(k, v) {
+          localStorage.setItem(k, JSON.stringify(v));
+        },
+      };
+
+      function toast(msg, type = "info") {
+        const t = document.createElement("div");
+        t.className = "toast";
+        t.textContent = msg;
+        $("#toast").appendChild(t);
+        setTimeout(() => t.remove(), 4200);
+      }
+
+      // URL validation
+      const urlRe = /^(https?:\/\/)[\w.-]+(\.[\w.-]+)+(:\d+)?(\/[^\s]*)?$/i;
+      async function validateURL(u, dnsPing = false) {
+        if (!urlRe.test(u)) return { ok: false, reason: "Invalid format" };
+        if (!dnsPing) return { ok: true };
+        // DNS ping via Image load (no-cors). Not bulletproof but useful.
+        try {
+          const url = new URL(u);
+          await new Promise((res, rej) => {
+            const i = new Image();
+            i.onload = () => res();
+            i.onerror = () => res();
+            i.src = url.origin + "/favicon.ico?__ping=" + Math.random();
+          });
+          return { ok: true };
+        } catch {
+          return { ok: false, reason: "DNS check failed" };
+        }
+      }
+
+      // Minimal QR (qrcode-generator, MIT) – compact build for typeNumber=0, errorCorrectLevel='M'
+      // Source: https://github.com/kazuhikoarase/qrcode-generator (trimmed)
+      (function () {
+        function n(a) {
+          this.mode = c.MODE_8BIT_BYTE;
+          this.data = a;
+        }
+        function p(a, b) {
+          this.typeNumber = a;
+          this.errorCorrectLevel = b;
+          this.modules = null;
+          this.moduleCount = 0;
+          this.dataList = [];
+        }
+        const c = {
+          PAD0: 0xec,
+          PAD1: 0x11,
+          MODE_8BIT_BYTE: 4,
+          QRUtil: {
+            PATTERN_POSITION_TABLE: [
+              [],
+              [6, 18],
+              [6, 22],
+              [6, 26],
+              [6, 30],
+              [6, 34],
+            ],
+            GLOG: function (a) {
+              if (a < 1) throw new Error("glog");
+              return d[a];
+            },
+            GEXP: function (a) {
+              for (; a < 0; ) a += 255;
+              for (; 255 < a; ) a -= 255;
+              return e[a];
+            },
+            getBCHTypeInfo: function (a) {
+              for (var b = a << 10; 0 <= f(b) - f(1335); )
+                b ^= 1335 << (f(b) - f(1335));
+              return (a << 10) | b;
+            },
+            getMask: function (a, b) {
+              switch (a) {
+                case 0:
+                  return (b.row + b.col) % 2 == 0;
+                case 3:
+                  return (b.row + b.col) % 3 == 0;
+                default:
+                  return !1;
+              }
+            },
+            getErrorCorrectPolynomial: function (a) {
+              for (var b = new g([1], 0), h = 0; h < a; h++)
+                b = b.multiply(new g([1, e[h]], 0));
+              return b;
+            },
+          },
+        };
+        function f(a) {
+          for (var b = 0; 0 != a; ) b++, (a >>= 1);
+          return b - 1;
+        }
+        function g(a, b) {
+          this.num = a;
+          this.shift = b;
+        }
+        g.prototype = {
+          get: function (a) {
+            return this.num[a];
+          },
+          getLength: function () {
+            return this.num.length;
+          },
+          multiply: function (a) {
+            for (
+              var b = Array(this.getLength() + a.getLength() - 1).fill(0),
+                h = 0;
+              h < this.getLength();
+              h++
+            )
+              for (var k = 0; k < a.getLength(); k++)
+                b[h + k] ^= e[(d[this.get(h)] + d[a.get(k)]) % 255];
+            return new g(b, 0);
+          },
+          mod: function (a) {
+            if (this.getLength() - a.getLength() < 0) return this;
+            for (
+              var b = d[this.get(0)] - d[a.get(0)],
+                h = Array(this.getLength()).fill(0),
+                k = 0;
+              k < this.getLength();
+              k++
+            )
+              h[k] = this.get(k) ^ e[(d[a.get(k)] + b) % 255];
+            return new g(h, 0).mod(a);
+          },
+        };
+        p.prototype = {
+          addData: function (a) {
+            this.dataList.push(new n(a));
+          },
+          isDark: function (a, b) {
+            return this.modules[a][b];
+          },
+          getModuleCount: function () {
+            return this.moduleCount;
+          },
+          make: function () {
+            this.typeNumber = 2;
+            this.moduleCount = this.typeNumber * 4 + 17;
+            this.modules = Array(this.moduleCount)
+              .fill(null)
+              .map(() => Array(this.moduleCount).fill(null));
+            this.setupPositionProbePattern(0, 0);
+            this.setupPositionProbePattern(this.moduleCount - 7, 0);
+            this.setupPositionProbePattern(0, this.moduleCount - 7);
+            this.mapData(this.createData());
+          },
+          setupPositionProbePattern: function (a, b) {
+            for (let h = -1; h <= 7; h++)
+              if (!(a + h <= -1 || this.moduleCount <= a + h))
+                for (let k = -1; k <= 7; k++)
+                  b + k <= -1 ||
+                    this.moduleCount <= b + k ||
+                    (this.modules[a + h][b + k] =
+                      (0 <= h && h <= 6 && (k == 0 || k == 6)) ||
+                      (0 <= k && k <= 6 && (h == 0 || h == 6)) ||
+                      (2 <= h && h <= 4 && 2 <= k && k <= 4));
+          },
+          mapData: function (a) {
+            let b = 0,
+              h = 0;
+            for (let k = this.moduleCount - 1; 0 < k; k -= 2) {
+              6 == k && k--;
+              for (let l = this.moduleCount - 1; 0 <= l; l--) {
+                for (let m = 0; m < 2; m++)
+                  if (null == this.modules[l][k - m]) {
+                    let q = !1;
+                    0 < b &&
+                      (q =
+                        ((255 & a[((b - 1) << 3) | (h >> 2)]) >>
+                          (3 - (h % 4))) &
+                        1);
+                    this.modules[l][k - m] = q;
+                    h++;
+                    if (8 == h) {
+                      b++;
+                      h = 0;
+                    }
+                  }
+              }
+            }
+          },
+          createData: function () {
+            let a = [];
+            this.dataList.forEach((t) => {
+              for (let r = 0; r < t.data.length; r++)
+                a.push(t.data.charCodeAt(r));
+            });
+            let b = c.QRUtil.getErrorCorrectPolynomial(10),
+              h = new g(a, 0);
+            h = h.mod(b);
+            a = a.concat(Array(10 - h.getLength()).fill(0));
+            return new Uint8ClampedArray(a);
+          },
+        };
+        const d = Array(256),
+          e = Array(256);
+        for (let a = 0; a < 8; a++) e[a] = 1 << a;
+        for (let a = 8; a < 256; a++)
+          e[a] = e[a - 4] ^ e[a - 5] ^ e[a - 6] ^ e[a - 8];
+        for (let a = 0; a < 256; a++) {
+          for (let b = 0; b < 256; b++)
+            if ((e[b] == 1 << 8) | a) {
+              d[a] = 255 - b;
+              break;
+            }
+        }
+        window.QRMini = p;
+      })();
+
+      function drawQR(canvas, text) {
+        const qr = new QRMini(2, "M");
+        qr.addData(text);
+        qr.make();
+        const n = qr.getModuleCount();
+        const scale = Math.floor(Math.min(canvas.width, canvas.height) / n);
+        const ctx = canvas.getContext("2d");
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#000";
+        const off = (canvas.width - n * scale) / 2;
+        for (let r = 0; r < n; r++) {
+          for (let c = 0; c < n; c++) {
+            if (qr.isDark(r, c))
+              ctx.fillRect(
+                Math.round(off + c * scale),
+                Math.round(off + r * scale),
+                scale,
+                scale
+              );
+          }
+        }
+      }
+
+      // ===== State =====
+      const state = {
+        items: store.get("items", []),
+        selected: -1,
+        stats: store.get("stats", {
+          total: 0,
+          done: 0,
+          fail: 0,
+          avg: 0,
+          timeline: [],
+        }),
+        settings: store.get("settings", {
+          pageSize: "A4",
+          orientation: "portrait",
+          margin: 15,
+          cover: "yes",
+          qrPerPage: "yes",
+          delay: 300,
+          file: "report-{date}.pdf",
+          dnsPing: "no",
+        }),
+      };
+
+      // ===== UI Bindings =====
+      const urlInput = $("#urlInput");
+      const validity = $("#validity");
+      const queueEl = $("#queue");
+      const iframe = $("#iframe");
+      const qrCanvas = $("#qr");
+      qrCanvas.width = qrCanvas.height = 160;
+      const bar = $("#bar");
+      const chart = $("#chart");
+
+      function renderQueue() {
+        queueEl.innerHTML = "";
+        state.items.forEach((u, i) => {
+          const li = document.createElement("div");
+          li.className = "item";
+          li.setAttribute("role", "option");
+          li.setAttribute("data-i", i);
+          li.setAttribute("aria-selected", state.selected === i);
+          li.innerHTML = `<div class="handle" draggable="true" title="Drag to reorder">☰</div>
+                      <div class="url" title="${u}">${u}</div>
+                      <div class="status">${urlRe.test(u) ? "✓" : "!"} </div>`;
+          li.addEventListener("click", () => selectIndex(i));
+          const handle = li.firstElementChild;
+          handle.addEventListener("dragstart", (e) => {
+            e.dataTransfer.setData("text/plain", i);
+          });
+          li.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            li.style.outline = "2px dashed rgba(255,255,255,.25)";
+          });
+          li.addEventListener("dragleave", () => (li.style.outline = ""));
+          li.addEventListener("drop", (e) => {
+            e.preventDefault();
+            li.style.outline = "";
+            const from = +e.dataTransfer.getData("text/plain");
+            const to = i;
+            if (from === to) return;
+            const it = state.items.splice(from, 1)[0];
+            state.items.splice(to, 0, it);
+            persist();
+            renderQueue();
+          });
+          queueEl.appendChild(li);
+        });
+        $("#queueCount").textContent = String(state.items.length);
+        $("#sTotal").textContent = String(state.items.length);
+        if (state.selected >= state.items.length)
+          state.selected = state.items.length - 1;
+        if (state.selected < 0 && state.items.length > 0) state.selected = 0;
+        selectIndex(state.selected);
+      }
+
+      function selectIndex(i) {
+        state.selected = i;
+        $$(".item", queueEl).forEach((el, idx) =>
+          el.setAttribute("aria-selected", idx === i)
+        );
+        const url = state.items[i];
+        $("#currentURL").textContent = url || "—";
+        if (url) {
+          requestIdleCallback(() => drawQR(qrCanvas, url));
+          if ($("#livePreview").checked) {
+            try {
+              iframe.src = url;
+            } catch {}
+          }
+        }
+        persist();
+      }
+
+      function persist() {
+        store.set("items", state.items);
+        store.set("stats", state.stats);
+        store.set("settings", state.settings);
+      }
+
+      function updateValidity(u) {
+        validateURL(u, state.settings.dnsPing === "yes").then((res) => {
+          validity.textContent = res.ok
+            ? "URL: valid"
+            : "URL: invalid" + (res.reason ? " – " + res.reason : "");
+          validity.style.background = res.ok
+            ? "rgba(34,197,94,.18)"
+            : "rgba(239,68,68,.18)";
+          validity.style.borderColor = res.ok
+            ? "rgba(34,197,94,.5)"
+            : "rgba(239,68,68,.5)";
+        });
+      }
+
+      // ===== Add / Remove =====
+      async function addURL(u) {
+        const v = await validateURL(u, state.settings.dnsPing === "yes");
+        if (!v.ok) {
+          toast("Invalid URL");
+          return;
+        }
+        state.items.push(u);
+        state.stats.total = state.items.length;
+        persist();
+        renderQueue();
+        toast("Added to queue");
+      }
+
+      function deleteSelected() {
+        if (state.selected > -1) {
+          const rem = state.items.splice(state.selected, 1);
+          toast("Removed: " + rem[0]);
+          renderQueue();
+        }
+      }
+
+      // ===== Import/Export Settings =====
+      function exportSettings() {
+        const data = { settings: state.settings, items: state.items };
+        const blob = new Blob([JSON.stringify(data, null, 2)], {
+          type: "application/json",
+        });
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = "url2pdf-settings-" + nowISO() + ".json";
+        a.click();
+        URL.revokeObjectURL(a.href);
+      }
+      function importSettingsFile(f) {
+        const r = new FileReader();
+        r.onload = () => {
+          try {
+            const obj = JSON.parse(r.result);
+            if (obj.settings) state.settings = obj.settings;
+            if (obj.items) state.items = obj.items;
+            persist();
+            renderQueue();
+            toast("Imported");
+          } catch {
+            toast("Invalid JSON");
+          }
+        };
+        r.readAsText(f);
+      }
+
+      // ===== Settings Modal =====
+      const dlg = $("#settings");
+      function syncSettingsToUI() {
+        $("#setPageSize").value = state.settings.pageSize;
+        $("#setOrientation").value = state.settings.orientation;
+        $("#setMargin").value = state.settings.margin;
+        $("#setCover").value = state.settings.cover;
+        $("#setQRPerPage").value = state.settings.qrPerPage;
+        $("#setDelay").value = state.settings.delay;
+        $("#setFile").value = state.settings.file;
+        $("#setDnsPing").value = state.settings.dnsPing;
+      }
+      function syncSettingsFromUI() {
+        state.settings.pageSize = $("#setPageSize").value;
+        state.settings.orientation = $("#setOrientation").value;
+        state.settings.margin = +$("#setMargin").value || 15;
+        state.settings.cover = $("#setCover").value;
+        state.settings.qrPerPage = $("#setQRPerPage").value;
+        state.settings.delay = +$("#setDelay").value || 0;
+        state.settings.file = $("#setFile").value || "report-{date}.pdf";
+        state.settings.dnsPing = $("#setDnsPing").value;
+        persist();
+      }
+
+      $("#btnSettings").addEventListener("click", () => {
+        syncSettingsToUI();
+        dlg.showModal();
+      });
+      $("#btnReset").addEventListener("click", (e) => {
+        e.preventDefault();
+        state.settings = {
+          pageSize: "A4",
+          orientation: "portrait",
+          margin: 15,
+          cover: "yes",
+          qrPerPage: "yes",
+          delay: 300,
+          file: "report-{date}.pdf",
+          dnsPing: "no",
+        };
+        persist();
+        syncSettingsToUI();
+        toast("Settings reset");
+      });
+      dlg.addEventListener("close", () => {
+        if (dlg.returnValue !== "reset") {
+          syncSettingsFromUI();
+          toast("Settings saved");
+        }
+      });
+
+      // ===== Report Build (HTML → Print to PDF) =====
+      function applyPrintCSS() {
+        let style = document.getElementById("print-style");
+        if (!style) {
+          style = document.createElement("style");
+          style.id = "print-style";
+          document.head.appendChild(style);
+        }
+        style.textContent = `@page{ size: ${state.settings.pageSize} ${state.settings.orientation}; margin: ${state.settings.margin}mm }`;
+      }
+
+      async function buildReport() {
+        applyPrintCSS();
+        const cont = $("#printReport");
+        cont.innerHTML = "";
+        const t0 = performance.now();
+        let ok = 0,
+          fail = 0;
+        const times = [];
+
+        // Cover
+        if (state.settings.cover === "yes") {
+          const cover = document.createElement("section");
+          cover.className = "report-page";
+          cover.innerHTML = `<h1 style="margin:0 0 6mm; font: 800 28pt/1.1 Inter,Arial">URL Report</h1>
+                           <div style="opacity:.75; margin-bottom: 10mm">Generated: ${new Date().toLocaleString()}</div>
+                           <div class="report-card"><strong>Total URLs:</strong> ${
+                             state.items.length
+                           }<br><strong>Page size:</strong> ${
+            state.settings.pageSize
+          } ${state.settings.orientation}<br><strong>Margin:</strong> ${
+            state.settings.margin
+          }mm</div>`;
+          cont.appendChild(cover);
+        }
+
+        // TOC
+        const toc = document.createElement("section");
+        toc.className = "report-page";
+        toc.innerHTML = '<h2>Table of Contents</h2><ol class="toc"></ol>';
+        const tocList = $(".toc", toc);
+
+        for (let i = 0; i < state.items.length; i++) {
+          const u = state.items[i];
+          const start = performance.now();
+          const page = document.createElement("section");
+          page.className = "report-page";
+          page.id = "p" + (i + 1);
+          const safeU = u.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+          page.innerHTML = `<h3 style="margin:0 0 4mm">${i + 1}. ${safeU}</h3>
+                          <div style="display:flex; gap:10mm; align-items:flex-start">
+                            <div class="report-card" style="flex:1">
+                              <div><strong>URL:</strong> <a href="${safeU}">${safeU}</a></div>
+                              <div><strong>Captured:</strong> ${new Date().toLocaleString()}</div>
+                              <div><strong>Notes:</strong> —</div>
+                            </div>
+                            <div style="text-align:center">
+                              <canvas width="160" height="160" style="border:1px solid #ddd; border-radius:8px" data-url="${safeU}"></canvas>
+                              <div style="font-size:9pt; opacity:.7">QR</div>
+                            </div>
+                          </div>`;
+          cont.appendChild(page);
+
+          // TOC item
+          const li = document.createElement("li");
+          li.textContent = `${i + 1}. ${u}`;
+          tocList.appendChild(li);
+
+          // Draw QR lazily
+          await new Promise((r) =>
+            requestIdleCallback(() => {
+              const cvs = $("canvas", page);
+              const ctx = cvs.getContext("2d");
+              ctx.fillStyle = "#fff";
+              ctx.fillRect(0, 0, cvs.width, cvs.height);
+              drawQR(cvs, u);
+              r();
+            })
+          );
+
+          await sleep(state.settings.delay);
+          const dt = performance.now() - start;
+          times.push(dt);
+          ok++;
+          bar.style.width =
+            ((i + 1) / Math.max(1, state.items.length)) * 100 + "%";
+        }
+
+        cont.prepend(toc);
+
+        const t1 = performance.now();
+        // Stats
+        const avg = Math.round(
+          times.reduce((a, b) => a + b, 0) / Math.max(1, times.length)
+        );
+        state.stats.done += ok;
+        state.stats.fail += fail;
+        state.stats.avg = Math.round((state.stats.avg + avg) / 2) || avg;
+        state.stats.timeline.push({ t: Date.now(), ms: avg });
+        persist();
+        $("#sDone").textContent = String(state.stats.done);
+        $("#sFail").textContent = String(state.stats.fail);
+        $("#sAvg").textContent = String(state.stats.avg);
+
+        toast(
+          `Report built in ${Math.round(
+            t1 - t0
+          )} ms. Use the browser's PDF export in the print dialog.`
+        );
+      }
+
+      function printReport() {
+        // Inject filename hint
+        const name = state.settings.file.replace(
+          "{date}",
+          new Date().toISOString().slice(0, 10)
+        );
+        const a = document.createElement("a");
+        a.download = name;
+        a.style.display = "none";
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.print();
+      }
+
+      // ===== Chart (tiny) =====
+      function drawChart() {
+        const ctx = chart.getContext("2d");
+        const data = state.stats.timeline.slice(-40);
+        const w = (chart.width = chart.clientWidth * 2);
+        const h = (chart.height = 140 * 2);
+        ctx.clearRect(0, 0, w, h);
+        if (!data.length) {
+          ctx.fillText("No data", 10, 24);
+          return;
+        }
+        const max = Math.max(...data.map((d) => d.ms));
+        const step = w / Math.max(1, data.length - 1);
+        ctx.beginPath();
+        data.forEach((d, i) => {
+          const x = i * step + 10;
+          const y = h - 20 - (d.ms / max) * (h - 40);
+          i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
+        });
+        ctx.lineWidth = 3;
+        ctx.strokeStyle = "rgba(99,102,241,0.9)";
+        ctx.stroke();
+      }
+
+      // ===== Keyboard Shortcuts =====
+      document.addEventListener(
+        "keydown",
+        (e) => {
+          if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            exportPDF();
+          } else if (e.key === "Delete") {
+            deleteSelected();
+          } else if (e.key === "ArrowDown") {
+            e.preventDefault();
+            selectIndex(Math.min(state.items.length - 1, state.selected + 1));
+          } else if (e.key === "ArrowUp") {
+            e.preventDefault();
+            selectIndex(Math.max(0, state.selected - 1));
+          } else if (e.key.toLowerCase() === "s") {
+            e.preventDefault();
+            $("#btnSettings").click();
+          } else if (e.key.toLowerCase() === "i") {
+            e.preventDefault();
+            $("#btnImport").click();
+          } else if (e.key.toLowerCase() === "e") {
+            e.preventDefault();
+            $("#btnExport").click();
+          }
+        },
+        { passive: false }
+      );
+
+      // ===== Drag & Drop (into queue) =====
+      document.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        $("#dropZone").style.display = "grid";
+      });
+      document.addEventListener("dragleave", () => {
+        $("#dropZone").style.display = "none";
+      });
+      document.addEventListener("drop", (e) => {
+        e.preventDefault();
+        $("#dropZone").style.display = "none";
+        const text = e.dataTransfer.getData("text");
+        const urls = text.split(/\s+/).filter(Boolean);
+        urls.forEach(addURL);
+      });
+
+      // ===== Actions =====
+      function exportPDF() {
+        if (!state.items.length) {
+          toast("Queue is empty");
+          return;
+        }
+        buildReport().then(() => printReport());
+      }
+
+      $("#btnAdd").addEventListener("click", () => {
+        if (urlInput.value.trim()) addURL(urlInput.value.trim());
+      });
+      urlInput.addEventListener("input", () =>
+        updateValidity(urlInput.value.trim())
+      );
+      urlInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          if (urlInput.value.trim()) addURL(urlInput.value.trim());
+        }
+      });
+      $("#btnDelete").addEventListener("click", deleteSelected);
+      $("#btnClear").addEventListener("click", () => {
+        state.items = [];
+        persist();
+        renderQueue();
+      });
+      $("#btnExportPDF").addEventListener("click", exportPDF);
+      $("#btnExport").addEventListener("click", exportSettings);
+      $("#btnImport").addEventListener("click", () => $("#fileImport").click());
+      $("#fileImport").addEventListener("change", (e) => {
+        const f = e.target.files[0];
+        if (f) importSettingsFile(f);
+      });
+
+      $("#livePreview").addEventListener("change", () =>
+        selectIndex(state.selected)
+      );
+
+      // ===== Init =====
+      function init() {
+        renderQueue();
+        drawChart();
+        updateValidity(urlInput.value.trim());
+        toast("Tip: Press Ctrl/Cmd+Enter to export PDF");
+      }
+      window.addEventListener(
+        "resize",
+        () => {
+          clearTimeout(window.__rsz);
+          window.__rsz = setTimeout(drawChart, 150);
+        },
+        { passive: true }
+      );
+      init();
+    </script>
+  </body>
+</html>
